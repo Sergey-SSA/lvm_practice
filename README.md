@@ -1,6 +1,6 @@
 **Работа с LVM**
 
-Подключил тестовый стенд [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
+Подключил тестовый стендм - [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
 
 `git clone https://gitlab.com/otus_linux/stands-03-lvm.git`
 
@@ -49,7 +49,7 @@ sde                       8:64   0    1G  0 disk`
   1 LVM physical volume`
 ```
 
-Разметил диск для будующего использования LVM - **создал PV**
+Разметил диск для будущего использования LVM - **создал PV**
 
 `sudo pvcreate /dev/sdb`
 
@@ -185,6 +185,7 @@ sde                       8:64   0    1G  0 disk`
   LogVol01 VolGroup00 -wi-ao----   1.50g
   small    otus       -wi-a----- 100.00m
   test     otus       -wi-a-----  <8.00g
+```
 
 _Выше видно что появился LV-small VG-otus на 100мб_
 
@@ -246,6 +247,7 @@ Writing superblocks and filesystem accounting information: done
 Проверил что диск присутствует в новой VG
 
 `sudo vgdisplay -v otus | grep 'PV Na'`
+
 ```
   PV Name               /dev/sdb
   PV Name               /dev/sdc
@@ -302,29 +304,47 @@ _Сравнил: было test otus -wi-ao---- <8.00g_
 _Выше видно, что LV расширился с 8 Гб до 11.12Гб_
 
 Но файловая система осталась прежней, это видно командой
-` df -hT /data/
+
+`df -hT /data/`
+
+```
 Filesystem            Type  Size  Used Avail Use% Mounted on
 /dev/mapper/otus-test ext4  7.8G  7.8G     0 100% /data
+```
 
-Далее выполнил resize файловой системы
-` sudo resize2fs /dev/otus/test
+Далее выполнил *resize файловой системы*
+
+
+`sudo resize2fs /dev/otus/test`
+
+```
 resize2fs 1.42.9 (28-Dec-2013)
 Filesystem at /dev/otus/test is mounted on /data; on-line resizing required
 old_desc_blocks = 1, new_desc_blocks = 2
 The filesystem on /dev/otus/test is now 2914304 blocks long.
+```
 
-И проверил результат ` df -hT /data/
+И проверил результат
+
+`df -hT /data/`
+
+```
 Filesystem            Type  Size  Used Avail Use% Mounted on
 /dev/mapper/otus-test ext4   11G  7.8G  2.6G  76% /data
-*Выше видно что теперь занято не 100% как было ранее, а 76%. т.е. отработала утилита resize*
+```
+_Выше видно что теперь занято не 100% как было ранее, а 76%. т.е. отработала утилита resize_
 
 **Отработал ситуацию когда мне нужно уменьшить LV (забыл дать место для снэпшотов)**
 
 Сначала отмонтировал
-` sudo umount /data/
+
+`sudo umount /data/`
 
 Затем проверил на ошибки
-` sudo e2fsck -fy /dev/otus/test
+
+`sudo e2fsck -fy /dev/otus/test`
+
+```
 e2fsck 1.42.9 (28-Dec-2013)
 Pass 1: Checking inodes, blocks, and sizes
 Pass 2: Checking directory structure
@@ -332,46 +352,73 @@ Pass 3: Checking directory connectivity
 Pass 4: Checking reference counts
 Pass 5: Checking group summary information
 /dev/otus/test: 12/729088 files (0.0% non-contiguous), 2105907/2914304 blocks
+```
 
 Опять выполнил resize2fs файловой системы
-` sudo resize2fs /dev/otus/test 10G
+
+`sudo resize2fs /dev/otus/test 10G`
+
+```
 resize2fs 1.42.9 (28-Dec-2013)
 Resizing the filesystem on /dev/otus/test to 2621440 (4k) blocks.
 The filesystem on /dev/otus/test is now 2621440 blocks long.
+```
 
 И уменьшил размер тома
-` sudo lvreduce /dev/otus/test -L 10G
+
+`sudo lvreduce /dev/otus/test -L 10G`
+
+```
  WARNING: Reducing active logical volume to 10.00 GiB.
   THIS MAY DESTROY YOUR DATA (filesystem etc.)
 Do you really want to reduce otus/test? [y/n]: y
   Size of logical volume otus/test changed from <11.12 GiB (2846 extents) to 10.00 GiB (2560 extents).
   Logical volume otus/test successfully resized.
+```
 
 Смонтировал обратно
-` sudo mount /dev/otus/test /data/
+`sudo mount /dev/otus/test /data/`
 
 И проверил что файловая система стала нужного размера
-` df -hT /data/
+
+`df -hT /data/`
+
+```
 Filesystem            Type  Size  Used Avail Use% Mounted on
 /dev/mapper/otus-test ext4  9.8G  7.8G  1.6G  84% /data
-*Выше видно, что размер стал меньше. Был 11Гб, стал 9.8Гб*
+```
+
+_Выше видно, что размер стал меньше. Был 11Гб, стал 9.8Гб_
 
 Проверил LV
-` sudo lvs /dev/otus/test
+
+`sudo lvs /dev/otus/test`
+
+```
   LV   VG   Attr       LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
   test otus -wi-ao---- 10.00g
+```
 
-Далее проверил как работают снапшоты - команда lvcreate с флагом -s указывающий что нужно сделать снимок
-` sudo lvcreate -L 500M -s -n test-snap /dev/otus/test
-Logical volume "test-snap" created
+Далее **проверил как работают** снапшоты - команда *lvcreate с флагом -s* указывающий что нужно сделать снимок
+
+`sudo lvcreate -L 500M -s -n test-snap /dev/otus/test`
+
+>Logical volume "test-snap" created
 
 Проверил с помошью VGS
-` sudo vgs -o +lv_size,lv_name | grep test
+
+`sudo vgs -o +lv_size,lv_name | grep test`
+
+```
  otus         2   3   1 wz--n-  11.99g <1.41g  10.00g test
  otus         2   3   1 wz--n-  11.99g <1.41g 500.00m test-snap
+```
 
 Анализировал вывод команды lsblk
-` lsblk
+
+`lsblk`
+
+```
 NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
@@ -392,83 +439,120 @@ sdc                       8:32   0    2G  0 disk
   └─otus-test--snap     253:6    0   10G  0 lvm
 sdd                       8:48   0    1G  0 disk
 sde                       8:64   0    1G  0 disk
+```
 
 **Смонтировал снапшот как любой другой LV**
 
 Создал для него директорию
-` sudo mkdir /data-snap
 
-` sudo mount /dev/otus/test-snap /data-snap/
+`sudo mkdir /data-snap`
 
-` ll /data-snap/
+`sudo mount /dev/otus/test-snap /data-snap/`
+
+`ll /data-snap/`
+
+```
 total 8068564
 drwx------. 2 root root      16384 May 14 17:26 lost+found
 -rw-r--r--. 1 root root 8262189056 May 14 17:30 test.log
+```
 
 И отмонтировал
-` sudo umount /data-snap
 
-Проверил возможность откатиться на снапшот. Для наглядности сначала удалил логи
-` rm /data/test.log
+`sudo umount /data-snap`
+
+*Проверил возможность откатиться на снапшот*. Для наглядности сначала удалил логи
+
+`rm /data/test.log`
 
 Проверил удаление
-` ll
+
+`ll`
+
+```
 total 16
 drwx------. 2 root root 16384 May 14 17:26 lost+found
+```
 
 Отмонтировал
-` cd ..
 
-` sudo umount /data
+`cd ..`
 
-Откатил
-` lvconvert --merge /dev/otus/test-snap
+`sudo umount /data`
+
+**Откатил**
+
+`lvconvert --merge /dev/otus/test-snap`
+
+```
   Merging of volume otus/test-snap started.
   otus/test: Merged: 100.00%
+```
 
-` mount /dev/otus/test /data
+`mount /dev/otus/test /data`
 
-` ll /data
+`ll /data`
+
+```
 drwx------. 2 root root      16384 May 14 17:26 lost+found
 -rw-r--r--. 1 root root 8262189056 May 14 17:30 test.log
-*Как видно выше, файл test.log восстановился из снапштота*
+```
+
+_Как видно выше, файл test.log восстановился из снапштота_
 
 **Далее поработал с LVM Mirroring**
-` pvcreate /dev/sd{d,e}
+
+`pvcreate /dev/sd{d,e}`
+
+```
   Physical volume "/dev/sdd" successfully created.
   Physical volume "/dev/sde" successfully created.
+```
 
-` vgcreate vg0 /dev/sd{d,e}
-Volume group "vg0" successfully created
+`vgcreate vg0 /dev/sd{d,e}`
 
-` lvcreate -l+80%FREE -m1 -n mirror vg0
-Logical volume "mirror" created
+>Volume group "vg0" successfully created
 
-` lvs
+`lvcreate -l+80%FREE -m1 -n mirror vg0`
+
+>Logical volume "mirror" created
+
+`lvs`
+
+```
   LV       VG         Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
   LogVol00 VolGroup00 -wi-ao---- <37.47g
   LogVol01 VolGroup00 -wi-ao----   1.50g
   small    otus       -wi-a----- 100.00m
   test     otus       -wi-ao----  10.00g
   mirror   vg0        rwi-a-r--- 816.00m                                    100.00
-*Выше видно LV mirror.*
+```
+
+_Выше видно LV mirror._
 
 **Выполнил задачу - Уменьшить том под / до 8G**
 
-*Восстановил образ системы с начального стенда **Задача - Уменьшить том под / до 8G*
+Восстановил изначальное состояние тестового стенда - [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
 
 Подготовил временный том для раздела
-` sudo pvcreate /dev/sdb
-Physical volume "/dev/sdb" successfully created.
 
-` sudo vgcreate vg_root /dev/sdb
-Volume group "vg_root" successfully created
+`sudo pvcreate /dev/sdb`
 
-` sudo lvcreate -n lv_root -l +100%FREE /dev/vg_root
-Logical volume "lv_root" created.
+>Physical volume "/dev/sdb" successfully created.
+
+`sudo vgcreate vg_root /dev/sdb`
+
+>Volume group "vg_root" successfully created
+
+`sudo lvcreate -n lv_root -l +100%FREE /dev/vg_root`
+
+>Logical volume "lv_root" created.
 
 Создал на нём файловую систему и смонтировал его для переноса данных
-` sudo mkfs.xfs /dev/vg_root/lv_root
+
+`sudo mkfs.xfs /dev/vg_root/lv_root`
+
+```
 meta-data=/dev/vg_root/lv_root   isize=512    agcount=4, agsize=655104 blks
          =                       sectsz=512   attr=2, projid32bit=1
          =                       crc=1        finobt=0, sparse=0
@@ -478,35 +562,48 @@ naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
 log      =internal log           bsize=4096   blocks=2560, version=2
          =                       sectsz=512   sunit=0 blks, lazy-count=1
 realtime =none                   extsz=4096   blocks=0, rtextents=0
-` sudo mount /dev/vg_root/lv_root /mnt
+```
+
+`sudo mount /dev/vg_root/lv_root /mnt`
 
 Скопировал все данные из / в /mnt
-` sudo yum install xfsdump
 
-` chmod ugo+rwx mnt/
+`sudo yum install xfsdump`
 
-` sudo -i
+`chmod ugo+rwx mnt/`
 
-` xfsdump -J - /dev/VolGroup00/LogVol00 | xfsrestore -J - /mnt
+`sudo -i`
+
+`xfsdump -J - /dev/VolGroup00/LogVol00 | xfsrestore -J - /mnt`
 
 **Переконфигурировал grup, чтобы при старте перейти в новый /**
-Сымитировал текущий root -` сделал в него chroot и обновил grub
-` sudo -i
 
-` for i in /proc/ /sys/ /dev/ /run/ /boot/
+** Сымитировал текущий root -` сделал в него chroot и обновил grub**
+`sudo -i
+
+`for i in /proc/ /sys/ /dev/ /run/ /boot/`
+
+```
 do mount --bind $i /mnt/$i
 done
+```
 
-` chroot /mnt/
+`chroot /mnt/`
 
-` grub2-mkconfig -o /boot/grub2/grub.cfg
+`grub2-mkconfig -o /boot/grub2/grub.cfg`
+
+```
 Generating grub configuration file ...
 Found linux image: /boot/vmlinuz-3.10.0-862.2.3.el7.x86_64
 Found initrd image: /boot/initramfs-3.10.0-862.2.3.el7.x86_64.img
 done
+```
 
 Обновил образ initrd
-` cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g; s/.img//g"` --force; done
+
+`cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g; s/.img//g"` --force; done`
+
+```
 *** Generating early-microcode cpio image contents ***
 *** Constructing AuthenticAMD.bin ****
 *** Store current command line parameters ***
@@ -515,12 +612,17 @@ done
 *** Created microcode section ***
 *** Creating image file done ***
 *** Creating initramfs image file '/boot/initramfs-3.10.0-862.2.3.el7.x86_64.img' done ***
+```
 
-*Чтобы при загрузке был смонтирован нужный root редактирую файл* /boot/grub2/grub.cfg заменил rd.lvm.lv=VolGroup00/LogVol00 на rd.lvm.lv=vg_root-lv_root
-` reboot
+**Чтобы при загрузке был смонтирован нужный root редактирую файл /boot/grub2/grub.cfg** заменил rd.lvm.lv=VolGroup00/LogVol00 на rd.lvm.lv=vg_root-lv_root
 
-После успешной перезагрузки проверил утилитой lsblk
-` lsblk
+`reboot`
+
+После **успешной** перезагрузки проверил утилитой lsblk
+
+`lsblk`
+
+```
 NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
@@ -533,15 +635,24 @@ sdb                       8:16   0   10G  0 disk
 sdc                       8:32   0    2G  0 disk
 sdd                       8:48   0    1G  0 disk
 sde                       8:64   0    1G  0 disk
+```
 
-*Далее изменил размер старой VG и вернул на него /*
+**Далее изменил размер старой VG и вернул на него /**
+
 Для этого удалил старый LV на 40Гб и создал новый на 8Гб
-`  lvremove /dev/VolGroup00/LogVol00
+
+`lvremove /dev/VolGroup00/LogVol00`
+
+```
 Do you really want to remove active logical volume VolGroup00/LogVol00? [y/n]: y
   Logical volume "LogVol00" successfully removed
+```
 
 Проверил удаление LV
-` lsblk
+
+`lsblk`
+
+```
 NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
@@ -553,15 +664,22 @@ sdb                       8:16   0   10G  0 disk
 sdc                       8:32   0    2G  0 disk
 sdd                       8:48   0    1G  0 disk
 sde                       8:64   0    1G  0 disk
+```
 
 И создаю новый на 8Гб
-`  lvcreate -n VolGroup00/LogVol00 -L 8G /dev/VolGroup00
+
+`lvcreate -n VolGroup00/LogVol00 -L 8G /dev/VolGroup00`
+
+```
 WARNING: xfs signature detected on /dev/VolGroup00/LogVol00 at offset 0. Wipe it? [y/n]: y
   Wiping xfs signature on /dev/VolGroup00/LogVol00.
   Logical volume "LogVol00" created.
+```
 
 И ещё раз проверил
-` lsblk
+`lsblk`
+
+```
 NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
@@ -569,13 +687,17 @@ sda                       8:0    0   40G  0 disk
 └─sda3                    8:3    0   39G  0 part
   ├─VolGroup00-LogVol01 253:1    0  1.5G  0 lvm  [SWAP]
   └─VolGroup00-LogVol00 253:2    0    8G  0 lvm
+```
 
 Далее проделал на нём те же операции что и ранее в первый раз
-` mkfs.xfs /dev/VolGroup00/LogVol00
 
-` mount /dev/VolGroup00/LogVol00 /mnt
+`mkfs.xfs /dev/VolGroup00/LogVol00`
 
-` xfsdump -J - /dev/vg_root/lv_root | xfsrestore -J - /mnt
+`mount /dev/VolGroup00/LogVol00 /mnt`
+
+`xfsdump -J - /dev/vg_root/lv_root | xfsrestore -J - /mnt`
+
+```
 xfsdump: ending media file
 xfsdump: media file size 694581152 bytes
 xfsdump: dump size (non-dir files) : 681277296 bytes
@@ -583,35 +705,54 @@ xfsdump: dump complete: 15 seconds elapsed
 xfsdump: Dump Status: SUCCESS
 xfsrestore: restore complete: 15 seconds elapsed
 xfsrestore: Restore Status: SUCCESS
+```
 
-Далее как и в первый раз переконфигурировал grub, за исключением правки /etc/grub2/grub.cfg
-` for i in /proc/ /sys/ /dev/ /run/ /boot/; do mount --bind $i /mnt/$i; done
+Далее как и в первый раз **переконфигурировал grub**, за исключением правки /etc/grub2/grub.cfg
 
-` chroot /mnt/
+`for i in /proc/ /sys/ /dev/ /run/ /boot/; do mount --bind $i /mnt/$i; done`
 
-` grub2-mkconfig -o /boot/grub2/grub.cfg
+`chroot /mnt/`
+
+`grub2-mkconfig -o /boot/grub2/grub.cfg`
+
+```
 Generating grub configuration file ...
 Found linux image: /boot/vmlinuz-3.10.0-862.2.3.el7.x86_64
 Found initrd image: /boot/initramfs-3.10.0-862.2.3.el7.x86_64.img
 done
+```
 
-` cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g;
+```
+cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g;
 s/.img//g"` --force; done
+```
 
-Выделил том под /var в зеркало, для Для него на свободном диске sdd создал зеркало
-` pvcreate /dev/sdc /dev/sdd
+Выделил том под /var в зеркало
+Для него на свободном диске sdd создал зеркало
+
+`pvcreate /dev/sdc /dev/sdd`
+
+```
   Physical volume "/dev/sdc" successfully created.
   Physical volume "/dev/sdd" successfully created.
+```
 
-` vgcreate vg_var /dev/sdc /dev/sdd
-  Volume group "vg_var" successfully created
+`vgcreate vg_var /dev/sdc /dev/sdd`
 
-` lvcreate -L 950M -m1 -n lv_var vg_var
+>Volume group "vg_var" successfully created
+
+`lvcreate -L 950M -m1 -n lv_var vg_var`
+
+```
   Rounding up size to full physical extent 952.00 MiB
   Logical volume "lv_var" created.
+```
 
 Проверил содание зеркала на диске sdd
-` lsblk
+
+`lsblk`
+
+```
 NAME                     MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                        8:0    0   40G  0 disk
 ├─sda1                     8:1    0    1M  0 part
@@ -632,19 +773,26 @@ sdd                        8:48   0    1G  0 disk
 └─vg_var-lv_var_rimage_1 253:6    0  952M  0 lvm
   └─vg_var-lv_var        253:7    0  952M  0 lvm
 sde                        8:64   0    1G  0 disk
+```
 
 Создал на нём файловую систему и переместил /var
-` mkfs.ext4 /dev/vg_var/lv_var
+
+`mkfs.ext4 /dev/vg_var/lv_var`
+
+```
 Allocating group tables: done
 Writing inode tables: done
 Creating journal (4096 blocks): done
 Writing superblocks and filesystem accounting information: done
+```
 
-` mount /dev/vg_var/lv_var /mnt
+`mount /dev/vg_var/lv_var /mnt`
 
-` cp -aR /var/* /mnt/
+`cp -aR /var/* /mnt/`
 
-` rsync -avHPSAX /var/ /mnt/
+`rsync -avHPSAX /var/ /mnt/`
+
+```
 sending incremental file list
 ./
 .updated
@@ -652,20 +800,29 @@ sending incremental file list
 
 sent 130,798 bytes  received 565 bytes  262,726.00 bytes/sec
 total size is 90,668,197  speedup is 690.21
+```
 
 На всякий случай сохранил старое содержимое var
-` mkdir /tmp/oldvar && mv /var/* /tmp/oldvar
+
+`mkdir /tmp/oldvar && mv /var/* /tmp/oldvar`
 
 И смонтировал новый var в каталог /var
-` umount /mnt
 
-` mount /dev/vg_var/lv_var /var
-Для автоматичского монтирования записал данные в fstab
+`umount /mnt`
 
-` echo "`blkid | grep var: | awk '{print $2}'` /var ext4 defaults 0 0" `` /etc/fstab
+`mount /dev/vg_var/lv_var /var`
 
-И успешно перезагрзился в новый уже уменьшеный root...
+Для автоматичского монтирования **записал данные в fstab**
+
+```
+echo "`blkid | grep var: | awk '{print $2}'` /var ext4 defaults 0 0" `` /etc/fstab
+```
+
+**И успешно перезагрзился в новый уже уменьшеный root...**
+
 Проверил
+
+```
 NAME                     MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                        8:0    0   40G  0 disk
 ├─sda1                     8:1    0    1M  0 part
@@ -686,23 +843,34 @@ sdd                        8:48   0    1G  0 disk
 └─vg_var-lv_var_rimage_1 253:5    0  952M  0 lvm
   └─vg_var-lv_var        253:6    0  952M  0 lvm  /var
 sde                        8:64   0    1G  0 disk
+```
 
 После перазагрузки удалил временную VG в порядке очерёдности команд:
-` lvremove /dev/vg_root/lv_root
+
+`lvremove /dev/vg_root/lv_root`
+
+```
 Do you really want to remove active logical volume vg_root/lv_root? [y/n]: y
   Logical volume "lv_root" successfully removed
+```
 
-` vgremove /dev/vg_root
-  Volume group "vg_root" successfully removed
+`vgremove /dev/vg_root`
+>Volume group "vg_root" successfully removed
 
-` pvremove /dev/sdb
- Labels on physical volume "/dev/sdb" successfully wiped.
+
+`pvremove /dev/sdb`
+
+>Labels on physical volume "/dev/sdb" successfully wiped.
 
 Далее выделил том под /home по тому же принципу когда делал /var
-` lvcreate -n LogVol_Home -L 2G /dev/VolGroup00
-  Logical volume "LogVol_Home" created.
 
-` mkfs.xfs /dev/VolGroup00/LogVol_Home
+`lvcreate -n LogVol_Home -L 2G /dev/VolGroup00`
+
+>Logical volume "LogVol_Home" created.
+
+`mkfs.xfs /dev/VolGroup00/LogVol_Home`
+
+```
 meta-data=/dev/VolGroup00/LogVol_Home isize=512    agcount=4, agsize=131072 blks
          =                       sectsz=512   attr=2, projid32bit=1
          =                       crc=1        finobt=0, sparse=0
@@ -722,51 +890,71 @@ naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
 log      =internal log           bsize=4096   blocks=2560, version=2
          =                       sectsz=512   sunit=0 blks, lazy-count=1
 realtime =none                   extsz=4096   blocks=0, rtextents=0
+```
 
-` mount /dev/VolGroup00/LogVol_Home /mnt/
+`mount /dev/VolGroup00/LogVol_Home /mnt/`
 
-` cp -aR /home/* /mnt/
+`cp -aR /home/* /mnt/`
 
-` rm -rf /home/*
+`rm -rf /home/*`
 
-` umount /mnt
+`umount /mnt`
 
-` mount /dev/VolGroup00/LogVol_Home /home/
+`mount /dev/VolGroup00/LogVol_Home /home/`
 
 Для автоматического монтирования поправил /etc/fstab
-` echo "`blkid | grep Home | awk '{print $2}'` /home xfs defaults 0 0" `` /etc/fstab
+`echo "`blkid | grep Home | awk '{print $2}'` /home xfs defaults 0 0" `` /etc/fstab`
 
 И сделал том для снапшотов
 Сгенерировал файл в /home/
-` touch /home/file{1..20}
 
-Снял снапшот
-` lvcreate -L 100MB -s -n home_snap /dev/VolGroup00/LogVol_Home
+`touch /home/file{1..20}`
+
+**Снял снапшот**
+
+`lvcreate -L 100MB -s -n home_snap /dev/VolGroup00/LogVol_Home`
+
+```
   Rounding up size to full physical extent 128.00 MiB
   Logical volume "home_snap" created.
+```
 
 Удалил часть файлов
-` rm -f /home/file{11..20}
 
-Воспроизвёл процесс восстановления из снапшота
-` umount /home
+`rm -f /home/file{11..20}`
 
-` lvconvert --merge /dev/VolGroup00/home_snap
+**Воспроизвёл процесс восстановления из снапшота**
+
+`umount /home`
+
+`lvconvert --merge /dev/VolGroup00/home_snap`
+
+```
   Merging of volume VolGroup00/home_snap started.
   VolGroup00/LogVol_Home: Merged: 100.00%
+```
 
-` mount /home и подготовил временный том для раздела__
-` sudo pvcreate /dev/sdb
-Physical volume "/dev/sdb" successfully created.
+`mount /home`
 
-` sudo vgcreate vg_root /dev/sdb
-Volume group "vg_root" successfully created
+и подготовил временный том для раздела
 
-` sudo lvcreate -n lv_root -l +100%FREE /dev/vg_root
-Logical volume "lv_root" created.
+`sudo pvcreate /dev/sdb`
+
+>Physical volume "/dev/sdb" successfully created.
+
+`sudo vgcreate vg_root /dev/sdb`
+
+>Volume group "vg_root" successfully created
+
+`sudo lvcreate -n lv_root -l +100%FREE /dev/vg_root`
+
+>Logical volume "lv_root" created.
 
 Создал на нём файловую систему и смонтировал его для переноса данных
-` sudo mkfs.xfs /dev/vg_root/lv_root
+
+`sudo mkfs.xfs /dev/vg_root/lv_root`
+
+```
 meta-data=/dev/vg_root/lv_root   isize=512    agcount=4, agsize=655104 blks
          =                       sectsz=512   attr=2, projid32bit=1
          =                       crc=1        finobt=0, sparse=0
@@ -776,35 +964,51 @@ naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
 log      =internal log           bsize=4096   blocks=2560, version=2
          =                       sectsz=512   sunit=0 blks, lazy-count=1
 realtime =none                   extsz=4096   blocks=0, rtextents=0
-` sudo mount /dev/vg_root/lv_root /mnt
+```
+
+`sudo mount /dev/vg_root/lv_root /mnt`
 
 Скопировал все данные из / в /mnt
-` sudo yum install xfsdump
 
-` chmod ugo+rwx mnt/
+`sudo yum install xfsdump`
 
-` sudo -i
+`chmod ugo+rwx mnt/`
 
-` xfsdump -J - /dev/VolGroup00/LogVol00 | xfsrestore -J - /mnt
+`sudo -i`
+
+`xfsdump -J - /dev/VolGroup00/LogVol00 | xfsrestore -J - /mnt`
 
 **Переконфигурировал grup, чтобы при старте перейти в новый /**
-Сымитировал текущий root -` сделал в него chroot и обновил grub
-` sudo -i
 
-` for i in /proc/ /sys/ /dev/ /run/ /boot/
+**Сымитировал текущий root - сделал в него chroot и обновил grub**
+
+`sudo -i`
+
+`for i in /proc/ /sys/ /dev/ /run/ /boot/`
+
+```
 do mount --bind $i /mnt/$i
 done
+```
 
-` chroot /mnt/
+`chroot /mnt/`
 
-` grub2-mkconfig -o /boot/grub2/grub.cfg
+`grub2-mkconfig -o /boot/grub2/grub.cfg`
+
+```
 Generating grub configuration file ...
 Found linux image: /boot/vmlinuz-3.10.0-862.2.3.el7.x86_64
 Found initrd image: /boot/initramfs-3.10.0-862.2.3.el7.x86_64.img
 done
+```
 
 Обновил образ initrd
-` cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g; s/.img//g"` --force; done
+
+```
+cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g; s/.img//g"` --force; done
+```
+
+```
 *** Generating early-microcode cpio image contents ***
 *** Constructing AuthenticAMD.bin ****
 *** Store current command line parameters ***
@@ -813,12 +1017,17 @@ done
 *** Created microcode section ***
 *** Creating image file done ***
 *** Creating initramfs image file '/boot/initramfs-3.10.0-862.2.3.el7.x86_64.img' done ***
+```
 
-*Чтобы при загрузке был смонтирован нужный root редактирую файл* /boot/grub2/grub.cfg заменил rd.lvm.lv=VolGroup00/LogVol00 на rd.lvm.lv=vg_root-lv_root
-` reboot
+**Чтобы при загрузке был смонтирован нужный root редактирую файл /boot/grub2/grub.cfg** заменил rd.lvm.lv=VolGroup00/LogVol00 на rd.lvm.lv=vg_root-lv_root
 
-После успешной перезагрузки проверил утилитой lsblk
-` lsblk
+`reboot`
+
+**После успешной перезагрузки** проверил утилитой lsblk
+
+`lsblk`
+
+```
 NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
@@ -831,15 +1040,24 @@ sdb                       8:16   0   10G  0 disk
 sdc                       8:32   0    2G  0 disk
 sdd                       8:48   0    1G  0 disk
 sde                       8:64   0    1G  0 disk
+```
 
-*Далее изменил размер старой VG и вернул на него /*
+**Далее изменил размер старой VG и вернул на него /**
+
 Для этого удалил старый LV на 40Гб и создал новый на 8Гб
-`  lvremove /dev/VolGroup00/LogVol00
+
+`lvremove /dev/VolGroup00/LogVol00`
+
+```
 Do you really want to remove active logical volume VolGroup00/LogVol00? [y/n]: y
   Logical volume "LogVol00" successfully removed
+```
 
 Проверил удаление LV
-` lsblk
+
+`lsblk`
+
+```
 NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
@@ -851,15 +1069,22 @@ sdb                       8:16   0   10G  0 disk
 sdc                       8:32   0    2G  0 disk
 sdd                       8:48   0    1G  0 disk
 sde                       8:64   0    1G  0 disk
+```
 
 И создаю новый на 8Гб
-`  lvcreate -n VolGroup00/LogVol00 -L 8G /dev/VolGroup00
+`lvcreate -n VolGroup00/LogVol00 -L 8G /dev/VolGroup00`
+
+```
 WARNING: xfs signature detected on /dev/VolGroup00/LogVol00 at offset 0. Wipe it? [y/n]: y
   Wiping xfs signature on /dev/VolGroup00/LogVol00.
   Logical volume "LogVol00" created.
+```
 
 И ещё раз проверил
-` lsblk
+
+`lsblk`
+
+```
 NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
@@ -867,13 +1092,17 @@ sda                       8:0    0   40G  0 disk
 └─sda3                    8:3    0   39G  0 part
   ├─VolGroup00-LogVol01 253:1    0  1.5G  0 lvm  [SWAP]
   └─VolGroup00-LogVol00 253:2    0    8G  0 lvm
+```
 
 Далее проделал на нём те же операции что и ранее в первый раз
-` mkfs.xfs /dev/VolGroup00/LogVol00
 
-` mount /dev/VolGroup00/LogVol00 /mnt
+`mkfs.xfs /dev/VolGroup00/LogVol00`
 
-` xfsdump -J - /dev/vg_root/lv_root | xfsrestore -J - /mnt
+`mount /dev/VolGroup00/LogVol00 /mnt`
+
+`xfsdump -J - /dev/vg_root/lv_root | xfsrestore -J - /mnt`
+
+```
 xfsdump: ending media file
 xfsdump: media file size 694581152 bytes
 xfsdump: dump size (non-dir files) : 681277296 bytes
@@ -881,35 +1110,54 @@ xfsdump: dump complete: 15 seconds elapsed
 xfsdump: Dump Status: SUCCESS
 xfsrestore: restore complete: 15 seconds elapsed
 xfsrestore: Restore Status: SUCCESS
+```
 
-Далее как и в первый раз переконфигурировал grub, за исключением правки /etc/grub2/grub.cfg
-` for i in /proc/ /sys/ /dev/ /run/ /boot/; do mount --bind $i /mnt/$i; done
+Далее как и в первый раз **переконфигурировал grub, за исключением правки /etc/grub2/grub.cfg**
 
-` chroot /mnt/
+`for i in /proc/ /sys/ /dev/ /run/ /boot/; do mount --bind $i /mnt/$i; done`
 
-` grub2-mkconfig -o /boot/grub2/grub.cfg
+`chroot /mnt/`
+
+`grub2-mkconfig -o /boot/grub2/grub.cfg`
+
+```
 Generating grub configuration file ...
 Found linux image: /boot/vmlinuz-3.10.0-862.2.3.el7.x86_64
 Found initrd image: /boot/initramfs-3.10.0-862.2.3.el7.x86_64.img
 done
+```
 
-` cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g;
+```
+cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g;
 s/.img//g"` --force; done
+```
 
-Выделил том под /var в зеркало, для Для него на свободном диске sdd создал зеркало
-` pvcreate /dev/sdc /dev/sdd
+**Выделил том под /var в зеркало**
+для него на свободном диске sdd создал _зеркало_
+
+`pvcreate /dev/sdc /dev/sdd`
+
+```
   Physical volume "/dev/sdc" successfully created.
   Physical volume "/dev/sdd" successfully created.
+```
 
-` vgcreate vg_var /dev/sdc /dev/sdd
-  Volume group "vg_var" successfully created
+`vgcreate vg_var /dev/sdc /dev/sdd`
 
-` lvcreate -L 950M -m1 -n lv_var vg_var
+>Volume group "vg_var" successfully created
+
+`lvcreate -L 950M -m1 -n lv_var vg_var`
+
+```
   Rounding up size to full physical extent 952.00 MiB
   Logical volume "lv_var" created.
+```
 
-Проверил содание зеркала на диске sdd
-` lsblk
+Проверил соданное зеркала на диске sdd
+
+`lsblk`
+
+```
 NAME                     MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                        8:0    0   40G  0 disk
 ├─sda1                     8:1    0    1M  0 part
@@ -930,19 +1178,26 @@ sdd                        8:48   0    1G  0 disk
 └─vg_var-lv_var_rimage_1 253:6    0  952M  0 lvm
   └─vg_var-lv_var        253:7    0  952M  0 lvm
 sde                        8:64   0    1G  0 disk
+```
 
 Создал на нём файловую систему и переместил /var
-` mkfs.ext4 /dev/vg_var/lv_var
+
+`mkfs.ext4 /dev/vg_var/lv_var`
+
+```
 Allocating group tables: done
 Writing inode tables: done
 Creating journal (4096 blocks): done
 Writing superblocks and filesystem accounting information: done
+```
 
-` mount /dev/vg_var/lv_var /mnt
+`mount /dev/vg_var/lv_var /mnt`
 
-` cp -aR /var/* /mnt/
+`cp -aR /var/* /mnt/`
 
-` rsync -avHPSAX /var/ /mnt/
+`rsync -avHPSAX /var/ /mnt/`
+
+```
 sending incremental file list
 ./
 .updated
@@ -950,20 +1205,29 @@ sending incremental file list
 
 sent 130,798 bytes  received 565 bytes  262,726.00 bytes/sec
 total size is 90,668,197  speedup is 690.21
+```
 
 На всякий случай сохранил старое содержимое var
-` mkdir /tmp/oldvar && mv /var/* /tmp/oldvar
+
+`mkdir /tmp/oldvar && mv /var/* /tmp/oldvar`
 
 И смонтировал новый var в каталог /var
-` umount /mnt
 
-` mount /dev/vg_var/lv_var /var
-Для автоматичского монтирования записал данные в fstab
+`umount /mnt`
 
-` echo "`blkid | grep var: | awk '{print $2}'` /var ext4 defaults 0 0" `` /etc/fstab
+`mount /dev/vg_var/lv_var /var`
 
-И успешно перезагрзился в новый уже уменьшеный root...
+Для автоматичского монтирования **записал данные в fstab**
+
+```
+echo "`blkid | grep var: | awk '{print $2}'` /var ext4 defaults 0 0" `` /etc/fstab
+```
+
+***И успешно перезагрзился в новый уже уменьшеный root...***
+
 Проверил
+
+```
 NAME                     MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                        8:0    0   40G  0 disk
 ├─sda1                     8:1    0    1M  0 part
@@ -984,23 +1248,34 @@ sdd                        8:48   0    1G  0 disk
 └─vg_var-lv_var_rimage_1 253:5    0  952M  0 lvm
   └─vg_var-lv_var        253:6    0  952M  0 lvm  /var
 sde                        8:64   0    1G  0 disk
+```
 
-После перазагрузки удалил временную VG в порядке очерёдности команд:
-` lvremove /dev/vg_root/lv_root
+После перазагрузки **удалил временную VG** в порядке очерёдности команд:
+
+`lvremove /dev/vg_root/lv_root`
+
+```
 Do you really want to remove active logical volume vg_root/lv_root? [y/n]: y
   Logical volume "lv_root" successfully removed
+```
 
-` vgremove /dev/vg_root
-  Volume group "vg_root" successfully removed
+`vgremove /dev/vg_root`
 
-` pvremove /dev/sdb
- Labels on physical volume "/dev/sdb" successfully wiped.
+>Volume group "vg_root" successfully removed
+
+`pvremove /dev/sdb`
+
+>Labels on physical volume "/dev/sdb" successfully wiped.
 
 Далее выделил том под /home по тому же принципу когда делал /var
-` lvcreate -n LogVol_Home -L 2G /dev/VolGroup00
-  Logical volume "LogVol_Home" created.
 
-` mkfs.xfs /dev/VolGroup00/LogVol_Home
+`lvcreate -n LogVol_Home -L 2G /dev/VolGroup00`
+
+>Logical volume "LogVol_Home" created.
+
+`mkfs.xfs /dev/VolGroup00/LogVol_Home
+
+```
 meta-data=/dev/VolGroup00/LogVol_Home isize=512    agcount=4, agsize=131072 blks
          =                       sectsz=512   attr=2, projid32bit=1
          =                       crc=1        finobt=0, sparse=0
@@ -1020,37 +1295,52 @@ naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
 log      =internal log           bsize=4096   blocks=2560, version=2
          =                       sectsz=512   sunit=0 blks, lazy-count=1
 realtime =none                   extsz=4096   blocks=0, rtextents=0
+```
 
-` mount /dev/VolGroup00/LogVol_Home /mnt/
+`mount /dev/VolGroup00/LogVol_Home /mnt/`
 
-` cp -aR /home/* /mnt/
+`cp -aR /home/* /mnt/`
 
-` rm -rf /home/*
+`rm -rf /home/*`
 
-` umount /mnt
+`umount /mnt`
 
-` mount /dev/VolGroup00/LogVol_Home /home/
+`mount /dev/VolGroup00/LogVol_Home /home/`
 
-Для автоматического монтирования поправил /etc/fstab
-` echo "`blkid | grep Home | awk '{print $2}'` /home xfs defaults 0 0" `` /etc/fstab
+**Для автоматического монтирования поправил /etc/fstab**
 
-И сделал том для снапшотов
+```
+echo "`blkid | grep Home | awk '{print $2}'` /home xfs defaults 0 0" `` /etc/fstab
+```
+
+**И сделал том для снапшотов**
+
 Сгенерировал файл в /home/
-` touch /home/file{1..20}
 
-Снял снапшот
-` lvcreate -L 100MB -s -n home_snap /dev/VolGroup00/LogVol_Home
+`touch /home/file{1..20}`
+
+**Снял снапшот**
+
+`lvcreate -L 100MB -s -n home_snap /dev/VolGroup00/LogVol_Home`
+
+```
   Rounding up size to full physical extent 128.00 MiB
   Logical volume "home_snap" created.
+```
 
 Удалил часть файлов
-` rm -f /home/file{11..20}
+
+`rm -f /home/file{11..20}`
 
 Воспроизвёл процесс восстановления из снапшота
-` umount /home
 
-` lvconvert --merge /dev/VolGroup00/home_snap
+`umount /home`
+
+`lvconvert --merge /dev/VolGroup00/home_snap`
+
+```
   Merging of volume VolGroup00/home_snap started.
   VolGroup00/LogVol_Home: Merged: 100.00%
+```
 
-` mount /home
+`mount /home`
