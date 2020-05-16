@@ -1,16 +1,17 @@
-##Работа с LVM
-###Подключил тестовый стенд
-> git clone [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
+h1 Работа с LVM
 
-###Запустил тестовый стенд в директории stands-03-lvm
+Подключил тестовый стенд [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
+> git clone https://gitlab.com/otus_linux/stands-03-lvm.git
+
+Запустил тестовый стенд в директории stands-03-lvm
 > vagrant up
 
-###Подключился к нему
+Подключился к нему
 > vagrant ssh lvm
 
-###Проверил диски
+Проверил диски
 > lsblk
-NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+`NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda                       8:0    0   40G  0 disk
 ├─sda1                    8:1    0    1M  0 part
 ├─sda2                    8:2    0    1G  0 part /boot
@@ -20,11 +21,11 @@ sda                       8:0    0   40G  0 disk
 sdb                       8:16   0   10G  0 disk
 sdc                       8:32   0    2G  0 disk
 sdd                       8:48   0    1G  0 disk
-sde                       8:64   0    1G  0 disk
+sde                       8:64   0    1G  0 disk`
 
-###Проверил утилитой  lvmdiskscan
+Проверил утилитой  lvmdiskscan
 > sudo lvmdiskscan
- /dev/VolGroup00/LogVol00 [     <37.47 GiB]
+` /dev/VolGroup00/LogVol00 [     <37.47 GiB]
   /dev/VolGroup00/LogVol01 [       1.50 GiB]
   /dev/sda2                [       1.00 GiB]
   /dev/sda3                [     <39.00 GiB] LVM physical volume
@@ -35,23 +36,23 @@ sde                       8:64   0    1G  0 disk
   4 disks
   3 partitions
   0 LVM physical volume whole disks
-  1 LVM physical volume
+  1 LVM physical volume`
 
 Разметил диск для будующего использования LVM - создал PV
 > sudo pvcreate /dev/sdb
-Physical volume "/dev/sdb" successfully created.
+`Physical volume "/dev/sdb" successfully created.`
 
-Далее создавал первый уровень абстракции - VG
-> sudo vgcreate otus /dev/sdb
-Volume group "otus" successfully created
+>Далее создавал первый уровень абстракции - VG
+    sudo vgcreate otus /dev/sdb
+`Volume group "otus" successfully created`
 
-Далее создал Logical Volume - LV
-> sudo lvcreate -l+80%FREE -n test otus
-Logical volume "test" created.
+>Далее создал Logical Volume - LV
+    sudo lvcreate -l+80%FREE -n test otus
+`Logical volume "test" created.`
 
-Посмотрел информацию о созданной VG
-> sudo vgdisplay
- --- Volume group ---
+>Посмотрел информацию о созданной VG
+    sudo vgdisplay
+` --- Volume group ---
   VG Name               VolGroup00
   System ID
   Format                lvm2
@@ -91,7 +92,7 @@ Logical volume "test" created.
   Total PE              2559
   Alloc PE / Size       2047 / <8.00 GiB
   Free  PE / Size       512 / 2.00 GiB
-  VG UUID               AXvOU1-13eM-4iat-rAtP-RWXM-ibMC-PlCwf2
+  VG UUID               AXvOU1-13eM-4iat-rAtP-RWXM-ibMC-PlCwf2`
 
 Посмотрел какие диски входят в VG
 > sudo vgdisplay -v otus | grep Na
