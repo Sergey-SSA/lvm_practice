@@ -1,6 +1,6 @@
 **Работа с LVM**
 
-Подключил тестовый стендм - [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
+Подключил тестовый стенд - [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
 
 `git clone https://gitlab.com/otus_linux/stands-03-lvm.git`
 
