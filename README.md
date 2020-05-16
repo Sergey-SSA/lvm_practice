@@ -1,16 +1,21 @@
 *Работа с LVM*
 
-_Подключил тестовый стенд [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)_
+Подключил тестовый стенд [stands-03-lvm](https://gitlab.com/otus_linux/stands-03-lvm.git)
+
 `git clone https://gitlab.com/otus_linux/stands-03-lvm.git`
 
-_Запустил тестовый стенд в директории stands-03-lvm_
+Запустил тестовый стенд в директории stands-03-lvm
+
 `vagrant up`
 
-_Подключился к нему_
+Подключился к нему
+
 `vagrant ssh lvm`
 
-_Проверил диски_
+Проверил диски
+
 `lsblk`
+
 >NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 >sda                       8:0    0   40G  0 disk
 >├─sda1                    8:1    0    1M  0 part
@@ -23,8 +28,11 @@ _Проверил диски_
 >sdd                       8:48   0    1G  0 disk
 >sde                       8:64   0    1G  0 disk`
 
-_Проверил утилитой *lvmdiskscan*_
+
+Проверил утилитой *lvmdiskscan*
+
 `sudo lvmdiskscan`
+
 > /dev/VolGroup00/LogVol00 [     <37.47 GiB]
 >  /dev/VolGroup00/LogVol01 [       1.50 GiB]
 >  /dev/sda2                [       1.00 GiB]
@@ -38,20 +46,28 @@ _Проверил утилитой *lvmdiskscan*_
 >  0 LVM physical volume whole disks
 >  1 LVM physical volume`
 
-_Разметил диск для будующего использования LVM - *создал PV*_
+Разметил диск для будующего использования LVM - *создал PV*
+
 `sudo pvcreate /dev/sdb`
+
 >Physical volume "/dev/sdb" successfully created.`
 
-_Далее создавал *первый уровень абстракции - VG*_
+Далее создавал *первый уровень абстракции - VG*
+
 `sudo vgcreate otus /dev/sdb`
+
 >Volume group "otus" successfully created
 
-_Далее создал *Logical Volume - LV*_
+Далее создал *Logical Volume - LV*
+
 `sudo lvcreate -l+80%FREE -n test otus`
+
 >Logical volume "test" created.
 
-_Посмотрел информацию о созданной VG_
+Посмотрел *информацию* о созданной VG
+
 `sudo vgdisplay`
+
 > --- Volume group ---
 >  VG Name               VolGroup00
 >  System ID
@@ -94,15 +110,19 @@ _Посмотрел информацию о созданной VG_
 >  Free  PE / Size       512 / 2.00 GiB
 >  VG UUID               AXvOU1-13eM-4iat-rAtP-RWXM-ibMC-PlCwf2`
 
-_Посмотрел какие *диски входят в VG*_
+Посмотрел *какие диски входят в VG*
+
 `sudo vgdisplay -v otus | grep Na`
+
 >  VG Name               otus
 >  LV Name                test
 >  VG Name                otus
 >  PV Name               /dev/sdb
 
-_Более подробная *информация по LV*_
-` sudo lvdisplay /dev/otus/test
+Более подробная *информация по LV*
+
+`sudo lvdisplay /dev/otus/test`
+
 > --- Logical volume ---
 >  LV Path                /dev/otus/test
 >  LV Name                test
@@ -120,33 +140,44 @@ _Более подробная *информация по LV*_
 >  - currently set to     8192
 >  Block device           253:2
 
-_В сжатом виде *информация по VG*_
+В сжатом виде *информация по VG*
+
 `sudo vgs`
+
 >  VG         `PV `LV `SN Attr   VSize   VFree
 >  VolGroup00   1   2   0 wz--n- <38.97g    0
 >  otus         1   1   0 wz--n- <10.00g 2.00g
 
-_В сжатом виде *информация по LV*_
+В сжатом виде *информация по LV*
+
 `sudo lvs`
+
 >  LV       VG         Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
 >  LogVol00 VolGroup00 -wi-ao---- <37.47g
 >  LogVol01 VolGroup00 -wi-ao----   1.50g
 >  test     otus       -wi-a-----  <8.00g
 
-_Из свободного места создал ещё один LV, не экстентами как в прошлый раз, а значением в мб._
+Из свободного места *создал ещё один LV, не экстентами как в прошлый раз, а значением в мб.*
+
 `sudo lvcreate -L100M -n small otus`
+
 >Logical volume "small" created.
 
-_Проверил LV_
+Проверил LV
+
 `sudo lvs`
+
 >  LogVol00 VolGroup00 -wi-ao---- <37.47g
 >  LogVol01 VolGroup00 -wi-ao----   1.50g
 >  small    otus       -wi-a----- 100.00m
 >  test     otus       -wi-a-----  <8.00g
-*Выше видно что появился LV-small VG-otus на 100мб*
 
-_Далее на LV test создал файловую систему_
+_Выше видно что появился LV-small VG-otus на 100мб_
+
+Далее на LV test создал файловую систему
+
 `sudo mkfs.ext4 /dev/otus/test`
+
 >mke2fs 1.42.9 (28-Dec-2013)
 >Filesystem label=
 >OS type: Linux
@@ -169,19 +200,23 @@ _Далее на LV test создал файловую систему_
 >Writing superblocks and filesystem accounting information: done
 
 Создал директорию для данных
-` sudo mkdir /data
+`sudo mkdir /data`
 
 И смонтировал недавно созданный LV test в директорию data
-` sudo mount /dev/otus/test /data/
-mount: mount point /data/ does not exist
+`sudo mount /dev/otus/test /data/`
+
+>mount: mount point /data/ does not exist
 
 Проверил
-` sudo mount |grep /data
-/dev/mapper/otus-test on /data type ext4 (rw,relatime,seclabel,data=ordered)
 
-Далее встала задача расширить место для /data т.к. 8 Гб не хватает. Для расширения VG буду использовать блочное утройство sdc, создав на нём PV
-` sudo pvcreate /dev/sdc
-Physical volume "/dev/sdc" successfully created.
+`sudo mount |grep /data`
+
+>/dev/mapper/otus-test on /data type ext4 (rw,relatime,seclabel,data=ordered)
+
+Далее встала задача *расширить место* для /data т.к. 8 Гб не хватает. Для расширения VG буду использовать блочное утройство sdc, создав на нём PV
+`sudo pvcreate /dev/sdc`
+
+>Physical volume "/dev/sdc" successfully created.
 
 Далее расширил VG otus
 ` sudo vgextend otus /dev/sdc
